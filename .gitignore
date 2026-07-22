@@ -1,0 +1,37 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependency directories
+**/node_modules/
+
+# Environment files
+**/.env
+**/.env.local
+**/.env.*.local
+.env
+
+# Production/Build outputs
+**/dist/
+**/build/
+/client/dist/
+
+# Uploads & Temp files
+/server/upload/
+/server/uploads/
+/server/tests/test_ai_service.js
+
+# Google service account credentials (SENSITIVE - never commit)
+**/credentials/service-account.json
+**/credentials/*.json
+
+# ChromaDB local data
+/chroma/
+/chroma_data/
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
