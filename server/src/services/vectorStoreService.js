@@ -8,15 +8,25 @@ const embeddings = new GoogleGenerativeAIEmbeddings({
 
 let vectorStore = null;
 
+const chromaConfig = {
+    collectionName: "pdf_documents",
+    url: process.env.CHROMA_URL || "http://localhost:8000",
+};
+
+if (process.env.CHROMA_API_KEY) {
+    chromaConfig.chromaCloudAPIKey = process.env.CHROMA_API_KEY;
+    chromaConfig.clientParams = {
+        tenant: process.env.CHROMA_TENANT,
+        database: process.env.CHROMA_DATABASE,
+    };
+}
+
 export const getVectorStore = async () => {
     try {
         if (!vectorStore) {
             console.log("Creating Chroma Vector Store...");
 
-            vectorStore = new Chroma(embeddings, {
-                collectionName: "pdf_documents",
-                url: "http://localhost:8000",
-            });
+            vectorStore = new Chroma(embeddings, chromaConfig);
 
             console.log("Chroma Vector Store created successfully.");
         } else {
