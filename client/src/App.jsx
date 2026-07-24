@@ -5,6 +5,7 @@ import Chat from "./pages/Chat"
 import Booking from "./pages/Booking"
 import KnowledgeBase from "./pages/KnowledgeBase"
 import Dashboard from "./pages/Dashboard"
+import Analytics from "./pages/Analytics"
 import Settings from "./pages/Settings"
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
         <Route path="/booking" element={<Booking />} />
         <Route path="/knowledge" element={<KnowledgeBase />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/analytics" element={<Analytics />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
     </Routes>

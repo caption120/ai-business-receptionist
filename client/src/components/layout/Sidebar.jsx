@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom"
-import { LayoutDashboard, MessageSquare, Calendar, FileText, Settings } from "lucide-react"
+import { LayoutDashboard, MessageSquare, Calendar, FileText, Settings, BarChart3 } from "lucide-react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
@@ -10,6 +10,7 @@ const navigation = [
   { name: "Chat", href: "/chat", icon: MessageSquare },
   { name: "Booking", href: "/booking", icon: Calendar },
   { name: "Knowledge Base", href: "/knowledge", icon: FileText },
+  { name: "Analytics", href: "/analytics", icon: BarChart3 },
 ]
 
 const bottomNavigation = [
