@@ -8,6 +8,7 @@ import uploadRoutes from "./routes/uploadRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
+import voiceRoutes from "./routes/voiceRoutes.js";
 // import geminiRoutes from "./routes/geminiRoutes.js";
 
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
@@ -28,6 +29,7 @@ app.use("/api/v1/upload", uploadRoutes);
 app.use("/api/v1/chat", chatRoutes);
 app.use("/api/v1/booking", bookingRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
+app.use("/api/v1/voice", voiceRoutes);
 
 // app.use("/api/v1/gemini", geminiRoutes)
 

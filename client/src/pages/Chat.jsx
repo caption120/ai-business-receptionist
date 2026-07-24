@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Send, User, Paperclip, Mic, Calendar, Sparkles } from "lucide-react"
+import { Send, User, Paperclip, Mic, Square, Calendar, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { chatService } from "@/api"
+import { chatService, voiceService } from "@/api"
+import { encodeToWav } from "@/lib/audioEncoder"
 import { FalconIcon } from "@/components/ui/FalconIcon"
+import { VoiceWaveform } from "@/components/ui/VoiceWaveform"
 
 const SUGGESTED_PROMPTS = [
   { label: "Book a consultation", icon: Calendar },
@@ -78,8 +80,13 @@ export default function Chat() {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [isTranscribing, setIsTranscribing] = useState(false)
+  const [activeStream, setActiveStream] = useState(null)
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
+  const mediaRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -132,6 +139,79 @@ export default function Chat() {
       handleSend()
     }
   }
+
+  const stopRecording = useCallback(() => {
+    mediaRecorderRef.current?.stop()
+    setIsRecording(false)
+    setActiveStream(null)
+  }, [])
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      audioChunksRef.current = []
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop())
+
+        const rawBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" })
+        audioChunksRef.current = []
+        setIsTranscribing(true)
+
+        try {
+          const wavBlob = await encodeToWav(rawBlob)
+          const result = await voiceService.transcribe(wavBlob)
+          const transcript = result.transcript?.trim()
+
+          if (transcript) {
+            handleSend(transcript)
+          }
+        } catch (error) {
+          console.error("Transcription error:", error)
+          setMessages((prev) => [...prev, {
+            id: Date.now(),
+            role: "assistant",
+            content: `Error: ${error.message || "Failed to transcribe audio."}`
+          }])
+        } finally {
+          setIsTranscribing(false)
+        }
+      }
+
+      recorder.start()
+      mediaRecorderRef.current = recorder
+      setIsRecording(true)
+      setActiveStream(stream)
+    } catch (error) {
+      console.error("Microphone access error:", error)
+      setMessages((prev) => [...prev, {
+        id: Date.now(),
+        role: "assistant",
+        content: "Error: Microphone access is required for voice input."
+      }])
+    }
+  }, [handleSend])
+
+  const handleMicClick = useCallback(() => {
+    if (isRecording) {
+      stopRecording()
+    } else {
+      startRecording()
+    }
+  }, [isRecording, stopRecording, startRecording])
+
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop()
+      }
+    }
+  }, [])
 
   return (
     <div className="flex h-full w-full bg-background">
@@ -219,26 +299,58 @@ export default function Chat() {
                 </Button>
               </div>
 
-              {/* Textarea */}
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Message AI Receptionist…"
-                rows={1}
-                aria-label="Message input"
-                className="flex-1 bg-transparent border-0 outline-none resize-none py-1.5 text-[14px] leading-relaxed text-foreground placeholder:text-muted-foreground/60 max-h-32 min-h-[36px]"
-              />
+              {/* Textarea / recording waveform / transcribing indicator */}
+              {isRecording ? (
+                <div className="flex-1 flex items-center gap-2.5 py-1.5 px-3 min-h-[36px] rounded-xl bg-neutral-900">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse shrink-0" />
+                  <VoiceWaveform stream={activeStream} className="flex-1 h-8 w-full" />
+                </div>
+              ) : isTranscribing ? (
+                <div className="flex-1 flex items-center gap-1.5 py-1.5 min-h-[36px] text-[13px] text-muted-foreground">
+                  {[0, 0.15, 0.3].map((delay, i) => (
+                    <motion.span
+                      key={i}
+                      className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60"
+                      animate={{ y: [0, -4, 0], opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 0.6, repeat: Infinity, delay, ease: "easeInOut" }}
+                    />
+                  ))}
+                  <span className="ml-1">Transcribing…</span>
+                </div>
+              ) : (
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Message AI Receptionist…"
+                  rows={1}
+                  aria-label="Message input"
+                  className="flex-1 bg-transparent border-0 outline-none resize-none py-1.5 text-[14px] leading-relaxed text-foreground placeholder:text-muted-foreground/60 max-h-32 min-h-[36px]"
+                />
+              )}
 
               {/* Right actions */}
               <div className="flex items-end gap-0.5 pb-0.5">
                 <Button
                   type="button" variant="ghost" size="icon"
-                  aria-label="Voice input"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg shrink-0 hidden sm:flex"
+                  onClick={handleMicClick}
+                  disabled={isTranscribing}
+                  aria-label={isRecording ? "Stop recording" : "Voice input"}
+                  className={cn(
+                    "h-8 w-8 rounded-lg shrink-0 flex relative",
+                    isRecording
+                      ? "bg-neutral-900 text-white hover:bg-neutral-900 hover:text-white"
+                      : "text-muted-foreground hover:text-foreground",
+                    isTranscribing && "opacity-50 cursor-not-allowed"
+                  )}
                 >
-                  <Mic size={16} strokeWidth={1.75} />
+                  {isRecording && (
+                    <span className="absolute inset-0 rounded-lg bg-white/10 animate-pulse" />
+                  )}
+                  {isRecording
+                    ? <Square size={14} strokeWidth={2} className="relative fill-current" />
+                    : <Mic size={16} strokeWidth={1.75} className="relative" />}
                 </Button>
                 <Button
                   type="submit"

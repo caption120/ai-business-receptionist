@@ -26,6 +26,7 @@ AI Business Receptionist is an intelligent, full-stack conversational agent that
 - ❌ **Cancel & reschedule** existing bookings
 - 🕐 **Handle real-time queries** like "What time is it?" using live tool calling
 - 🧠 **Learn from your documents** — upload any PDF and the AI instantly gains that knowledge
+- 🎙️ **Take voice input** — speak into the chat and it's transcribed and answered like any typed message
 
 ---
 
@@ -81,7 +82,8 @@ AI Business Receptionist is an intelligent, full-stack conversational agent that
 |-----------|---------|
 | **Node.js + Express.js** | REST API server |
 | **LangChain** | AI orchestration & tool calling |
-| **Google Gemini 2.5 Flash** | Large language model |
+| **Google Gemini 2.5 Flash (via OpenRouter)** | Large language model |
+| **Google Gemini (`@google/genai`)** | Speech-to-text (audio understanding) |
 | **ChromaDB** | Vector store for RAG |
 | **MongoDB** | Database |
 | **Google Calendar API** | Appointment management |
@@ -108,7 +110,7 @@ AI Business Receptionist is an intelligent, full-stack conversational agent that
 
 ## 🤖 AI Agent Architecture
 
-The core AI uses a **LangChain Tool Calling Execution Loop** with Google Gemini:
+The core AI uses a **LangChain Tool Calling Execution Loop**, with the LLM itself routed through OpenRouter (`google/gemini-2.5-flash` by default) rather than a direct Gemini chat model:
 
 ```
 User Message
@@ -131,13 +133,12 @@ tool_calls? ──YES──→ Execute Tool(s) in parallel
 
 **Current Tools:**
 - `getCurrentTime` — Returns live date/time in IST
-
-**Planned Tools:**
 - `checkAvailability` — Google Calendar availability check
 - `createBooking` — Schedule appointments
 - `cancelBooking` — Cancel existing events
 - `rescheduleBooking` — Move appointments
-- `ragSearch` — Search knowledge base documents
+- `findNextAvailableSlots` — Suggests alternative open slots
+- `searchKnowledgeBase` — Searches the uploaded-PDF knowledge base (RAG)
 
 ---
 
@@ -149,38 +150,47 @@ ai-business-receptionist/
 ├── client/                          # React Frontend
 │   ├── src/
 │   │   ├── pages/
-│   │   │   ├── Chat.jsx             # AI chat interface
+│   │   │   ├── Chat.jsx             # AI chat interface (text + voice input)
 │   │   │   ├── Booking.jsx          # Booking management
 │   │   │   ├── KnowledgeBase.jsx    # PDF upload + docs
 │   │   │   ├── Dashboard.jsx        # Analytics overview
+│   │   │   ├── Analytics.jsx        # Activity charts
 │   │   │   ├── Settings.jsx         # Configuration
 │   │   │   └── Landing.jsx          # Marketing landing page
-│   │   ├── services/
-│   │   │   └── api.js               # Backend API service layer
+│   │   ├── api/                     # Backend API service layer, one file per resource
+│   │   │   ├── client.js            #   apiRequest() + API_BASE_URL
+│   │   │   ├── chat.js, booking.js, knowledge.js, dashboard.js, health.js, session.js, voice.js
+│   │   │   └── index.js
 │   │   ├── components/
 │   │   │   ├── layout/              # Layout, Sidebar
-│   │   │   └── ui/                  # shadcn/ui components
+│   │   │   └── ui/                  # shadcn/ui components (incl. VoiceWaveform)
 │   │   └── lib/
-│   │       └── utils.js             # Utility helpers
+│   │       ├── utils.js             # Utility helpers (cn)
+│   │       ├── theme.jsx            # Light/dark theme context
+│   │       └── audioEncoder.js      # Re-encodes recorded audio to WAV for STT
 │   ├── vercel.json                  # Vercel SPA routing config
 │   └── .env.example                 # Frontend env template
 │
 ├── server/                          # Express Backend
 │   ├── src/
 │   │   ├── controllers/
-│   │   │   ├── chatController.js    # Chat endpoint handler
-│   │   │   ├── uploadController.js  # PDF upload handler
-│   │   │   └── bookingController.js # Calendar operations
+│   │   │   ├── chatController.js, uploadController.js, bookingController.js
+│   │   │   ├── dashboardController.js, healthController.js
+│   │   │   └── voiceController.js   # Voice session/transcribe/respond handlers
 │   │   ├── services/
 │   │   │   ├── aiService.js         # LangChain agent + tool loop ⭐
-│   │   │   ├── ragService.js        # RAG retrieval
+│   │   │   ├── chatService.js       # RAG similarity search + answer synthesis
 │   │   │   ├── bookingService.js    # Google Calendar service
 │   │   │   ├── vectorStoreService.js# ChromaDB operations
-│   │   │   └── embeddingService.js  # Text embeddings
+│   │   │   ├── embeddingService.js  # Text embeddings
+│   │   │   ├── voiceEngine.js       # Speech-to-text via Gemini audio understanding
+│   │   │   └── sessionService.js    # In-memory voice-call session store
 │   │   ├── tools/
-│   │   │   └── bookingTools.js      # LangChain tool definitions
+│   │   │   ├── bookingTools.js      # LangChain tool definitions (calendar ops)
+│   │   │   └── ragTool.js           # LangChain tool definition (knowledge-base search)
+│   │   ├── memory/                  # In-process state (Maps/arrays, not MongoDB)
 │   │   ├── routes/                  # Express route definitions
-│   │   ├── middleware/              # Multer file upload middleware
+│   │   ├── middleware/              # Multer upload middleware (PDF + audio)
 │   │   └── config/
 │   │       ├── db.js                # MongoDB connection
 │   │       └── googleCalendar.js    # Google Calendar auth
@@ -285,6 +295,15 @@ GET  /api/v1/booking/create         # Create a booking
 GET  /api/v1/booking/next-slots     # Find next available times
 ```
 
+### Voice (Speech-to-Text)
+```http
+POST /api/v1/voice/transcribe
+Content-Type: multipart/form-data
+
+audio: <recording.wav>   # transcribed via Gemini audio understanding
+```
+Returns `{ success: true, transcript: "..." }`. Text-to-speech (`/api/v1/voice/speak`) is not implemented yet.
+
 ---
 
 ## 🚢 Deployment
@@ -314,11 +333,12 @@ railway up --detach
 - [x] Google Calendar integration
 - [x] React frontend with chat UI
 - [x] Vercel + Railway deployment
-- [ ] Booking tools integrated into AI agent
-- [ ] RAG tool integrated into AI agent
+- [x] Booking tools integrated into AI agent
+- [x] RAG tool integrated into AI agent
+- [x] Conversation memory (per-session)
+- [x] Voice input (speech-to-text)
+- [ ] Voice output (text-to-speech)
 - [ ] LangGraph multi-step reasoning
-- [ ] Conversation memory (per-session)
-- [ ] Voice input support
 - [ ] Multi-language support
 
 ---
