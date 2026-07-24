@@ -1,8 +1,9 @@
 import { NavLink } from "react-router-dom"
-import { LayoutDashboard, MessageSquare, Calendar, FileText, Settings, Bot } from "lucide-react"
+import { LayoutDashboard, MessageSquare, Calendar, FileText, Settings } from "lucide-react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
+import { FalconIcon } from "@/components/ui/FalconIcon"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -21,7 +22,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 h-16 border-b border-border/40 shrink-0">
         <div className="w-7 h-7 rounded-lg bg-foreground flex items-center justify-center text-background shrink-0">
-          <Bot size={15} strokeWidth={2} />
+          <FalconIcon size={15} strokeWidth={2} />
         </div>
         <span className="font-semibold text-[13px] tracking-tight text-foreground leading-none flex-1">
           Receptionist AI

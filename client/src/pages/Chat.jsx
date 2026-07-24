@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Send, Bot, User, Paperclip, Mic, Calendar, Sparkles } from "lucide-react"
+import { Send, User, Paperclip, Mic, Calendar, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { chatService } from "@/api"
+import { FalconIcon } from "@/components/ui/FalconIcon"
 
 const SUGGESTED_PROMPTS = [
   { label: "Book a consultation", icon: Calendar },
@@ -30,7 +31,7 @@ function TypingIndicator() {
       className="flex gap-3 items-end"
     >
       <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center shrink-0 shadow-sm">
-        <Bot size={15} />
+        <FalconIcon size={15} />
       </div>
       <div className="px-4 py-3.5 rounded-2xl rounded-bl-sm bg-card border border-border/50 flex items-center gap-1.5 shadow-sm">
         {[0, 0.18, 0.36].map((delay, i) => (
@@ -59,7 +60,7 @@ function MessageBubble({ msg }) {
         "w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm",
         isUser ? "bg-muted border border-border/60" : "bg-foreground text-background"
       )}>
-        {isUser ? <User size={15} className="text-muted-foreground" /> : <Bot size={15} />}
+        {isUser ? <User size={15} className="text-muted-foreground" /> : <FalconIcon size={15} />}
       </div>
       <div className={cn(
         "px-4 py-3 rounded-2xl text-[14px] leading-relaxed max-w-[80%] shadow-sm",
@@ -163,7 +164,7 @@ export default function Chat() {
               className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto gap-6 py-16"
             >
               <div className="w-16 h-16 rounded-2xl bg-foreground/8 border border-border/60 flex items-center justify-center">
-                <Bot size={28} className="text-foreground/60" strokeWidth={1.5} />
+                <FalconIcon size={28} className="text-foreground/60" strokeWidth={1.5} />
               </div>
               <div>
                 <h1 className="text-xl font-semibold tracking-tight mb-2">How can I help?</h1>

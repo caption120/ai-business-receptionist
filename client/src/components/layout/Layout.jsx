@@ -1,8 +1,9 @@
 import { Outlet, useLocation, NavLink } from "react-router-dom"
 import Sidebar from "./Sidebar"
 import { AnimatePresence, motion } from "framer-motion"
-import { LayoutDashboard, MessageSquare, Calendar, FileText, Bot } from "lucide-react"
+import { LayoutDashboard, MessageSquare, Calendar, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { FalconIcon } from "@/components/ui/FalconIcon"
 
 const mobileNavigation = [
   { name: "Chat", href: "/chat", icon: MessageSquare },
@@ -39,7 +40,7 @@ export default function Layout() {
         <header className="md:hidden flex items-center justify-between px-4 h-14 border-b border-border/40 bg-background/90 backdrop-blur-md sticky top-0 z-20 shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-foreground flex items-center justify-center text-background shrink-0">
-              <Bot size={14} strokeWidth={2} />
+              <FalconIcon size={14} strokeWidth={2} />
             </div>
             <span className="font-semibold text-[13px] tracking-tight">AI Receptionist</span>
           </div>

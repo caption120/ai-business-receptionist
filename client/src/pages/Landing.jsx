@@ -1,8 +1,9 @@
 import { motion, useInView } from "framer-motion"
 import { useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Bot, Sparkles, Zap, Shield, Clock, ArrowRight, MessageSquare, Calendar, FileText, Check, Star } from "lucide-react"
+import { Sparkles, Zap, Shield, Clock, ArrowRight, MessageSquare, Calendar, FileText, Check, Star } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { FalconIcon } from "@/components/ui/FalconIcon"
 
 /* ---- Animation helpers ---- */
 const fadeUp = {
@@ -65,7 +66,7 @@ export default function Landing() {
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 h-16 md:px-12 backdrop-blur-2xl bg-background/75 border-b border-border/30">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-foreground flex items-center justify-center text-background shrink-0">
-            <Bot size={15} strokeWidth={2} />
+            <FalconIcon size={15} strokeWidth={2} />
           </div>
           <span className="font-semibold text-[13px] tracking-tight">Receptionist AI</span>
         </div>
@@ -177,7 +178,7 @@ export default function Landing() {
               </div>
               <div className="flex gap-3 items-start">
                 <div className="w-8 h-8 rounded-full bg-foreground flex-shrink-0 flex items-center justify-center text-background mt-0.5 shadow-sm">
-                  <Bot size={15} />
+                  <FalconIcon size={15} />
                 </div>
                 <div className="bg-muted/60 border border-border/40 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-foreground max-w-[75%] leading-relaxed">
                   Hello! I'd be happy to help you book a consultation. We have availability on Tuesday at{" "}
@@ -192,7 +193,7 @@ export default function Landing() {
               </div>
               <div className="flex gap-3 items-start">
                 <div className="w-8 h-8 rounded-full bg-foreground flex-shrink-0 flex items-center justify-center text-background mt-0.5 shadow-sm">
-                  <Bot size={15} />
+                  <FalconIcon size={15} />
                 </div>
                 <div className="bg-muted/60 border border-border/40 rounded-2xl rounded-tl-sm px-4 py-3 text-sm max-w-[75%] leading-relaxed flex gap-2 items-center">
                   <Check size={14} className="text-muted-foreground shrink-0" />
@@ -328,7 +329,7 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2.5">
             <div className="w-6 h-6 rounded-md bg-foreground flex items-center justify-center text-background">
-              <Bot size={13} />
+              <FalconIcon size={13} />
             </div>
             <span className="font-semibold text-[13px] tracking-tight">Receptionist AI</span>
           </div>
