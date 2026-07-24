@@ -1,5 +1,6 @@
 import { Chroma } from "@langchain/community/vectorstores/chroma";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
+import { ChromaClient, CloudClient } from "chromadb";
 
 const embeddings = new GoogleGenerativeAIEmbeddings({
     apiKey: process.env.GOOGLE_API_KEY,
@@ -8,25 +9,27 @@ const embeddings = new GoogleGenerativeAIEmbeddings({
 
 let vectorStore = null;
 
-const chromaConfig = {
-    collectionName: "pdf_documents",
-    url: process.env.CHROMA_URL || "http://localhost:8000",
-};
+const buildChromaIndex = () => {
+    if (process.env.CHROMA_API_KEY) {
+        return new CloudClient({
+            apiKey: process.env.CHROMA_API_KEY,
+            tenant: process.env.CHROMA_TENANT,
+            database: process.env.CHROMA_DATABASE,
+        });
+    }
 
-if (process.env.CHROMA_API_KEY) {
-    chromaConfig.chromaCloudAPIKey = process.env.CHROMA_API_KEY;
-    chromaConfig.clientParams = {
-        tenant: process.env.CHROMA_TENANT,
-        database: process.env.CHROMA_DATABASE,
-    };
-}
+    return new ChromaClient({ path: process.env.CHROMA_URL || "http://localhost:8000" });
+};
 
 export const getVectorStore = async () => {
     try {
         if (!vectorStore) {
             console.log("Creating Chroma Vector Store...");
 
-            vectorStore = new Chroma(embeddings, chromaConfig);
+            vectorStore = new Chroma(embeddings, {
+                collectionName: "pdf_documents",
+                index: buildChromaIndex(),
+            });
 
             console.log("Chroma Vector Store created successfully.");
         } else {
