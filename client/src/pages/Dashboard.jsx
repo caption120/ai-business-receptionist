@@ -1,6 +1,8 @@
+import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { MessageSquare, Calendar, FileText, Activity } from "lucide-react"
+import { MessageSquare, Calendar, FileText, Activity, Loader2 } from "lucide-react"
+import { dashboardService, healthService } from "@/api"
 
 const containerVariants = {
   hidden: {},
@@ -12,24 +14,59 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } }
 }
 
-const chartBars = [40, 25, 45, 60, 30, 70, 85, 55, 45, 90, 65, 80, 50, 75]
+const ACTIVITY_ICONS = {
+  booking: Calendar,
+  chat: MessageSquare,
+  knowledge: FileText,
+}
 
-const stats = [
-  { title: "AI Conversations", value: "1,248", change: "+12% from last month", icon: MessageSquare, trend: "up" },
-  { title: "Appointments Booked", value: "142", change: "+4% from last month", icon: Calendar, trend: "up" },
-  { title: "Documents Learned", value: "24", change: "+2 added this month", icon: FileText, trend: "up" },
-  { title: "System Status", value: "Healthy", change: "99.9% uptime", icon: Activity, status: "ok" },
-]
-
-const recentActivity = [
-  { action: "Booked consultation", target: "Sarah Jenkins", time: "10m ago", icon: Calendar },
-  { action: "Answered query", target: "Pricing details", time: "45m ago", icon: MessageSquare },
-  { action: "Learned document", target: "Q3_Services.pdf", time: "2h ago", icon: FileText },
-  { action: "Booked meeting", target: "Michael Chen", time: "3h ago", icon: Calendar },
-  { action: "Rescheduled apt.", target: "Emma Watson", time: "5h ago", icon: Calendar },
-]
+function timeAgo(isoString) {
+  const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)
+  if (seconds < 60) return "just now"
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
 
 export default function Dashboard() {
+  const [stats, setStats] = useState(null)
+  const [activity, setActivity] = useState([])
+  const [systemHealthy, setSystemHealthy] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const loadDashboard = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const [statsRes, activityRes, healthRes] = await Promise.allSettled([
+        dashboardService.getStats(),
+        dashboardService.getActivity(6),
+        healthService.check(),
+      ])
+
+      if (statsRes.status === "fulfilled") setStats(statsRes.value.data)
+      if (activityRes.status === "fulfilled") setActivity(activityRes.value.data || [])
+      setSystemHealthy(healthRes.status === "fulfilled")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadDashboard()
+    const interval = setInterval(loadDashboard, 30000)
+    return () => clearInterval(interval)
+  }, [loadDashboard])
+
+  const statCards = [
+    { title: "AI Conversations", value: stats?.conversations ?? "—", change: "Messages handled by the AI", icon: MessageSquare },
+    { title: "Appointments Booked", value: stats?.appointments ?? "—", change: "Upcoming on the calendar", icon: Calendar },
+    { title: "Documents Learned", value: stats?.documents ?? "—", change: "Active in the knowledge base", icon: FileText },
+    { title: "System Status", value: systemHealthy === null ? "—" : systemHealthy ? "Healthy" : "Offline", change: systemHealthy ? "Backend reachable" : "Backend unreachable", icon: Activity },
+  ]
+
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto w-full">
       {/* Page Header */}
@@ -52,7 +89,7 @@ export default function Dashboard() {
         animate="visible"
         className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
       >
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <motion.div key={stat.title} variants={cardVariants}>
             <Card className="bg-card border-border/50 hover:border-border transition-colors duration-300">
               <CardHeader className="flex flex-row items-start justify-between pb-3 pt-5 px-5">
@@ -70,90 +107,51 @@ export default function Dashboard() {
         ))}
       </motion.div>
 
-      {/* Main Charts + Activity */}
+      {/* Recent Activity */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-1 lg:grid-cols-3 gap-4"
+        className="grid grid-cols-1"
       >
-        {/* Chart */}
-        <motion.div variants={cardVariants} className="lg:col-span-2">
-          <Card className="bg-card border-border/50 h-full">
-            <CardHeader className="px-6 pt-6 pb-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-[15px] font-semibold">Conversation Activity</CardTitle>
-                  <CardDescription className="text-[13px] mt-0.5">Daily interactions handled by your AI</CardDescription>
-                </div>
-                <span className="text-[11px] text-muted-foreground bg-muted px-2.5 py-1 rounded-md font-medium">Last 14 days</span>
-              </div>
-            </CardHeader>
-            <CardContent className="px-6 pb-6">
-              {/* Labels */}
-              <div className="flex justify-between text-[10px] text-muted-foreground mb-3 font-medium">
-                <span>0</span>
-                <span>50</span>
-                <span>100</span>
-              </div>
-              {/* Bar chart */}
-              <div className="h-48 flex items-end gap-1.5">
-                {chartBars.map((h, i) => (
-                  <motion.div
-                    key={i}
-                    className="flex-1 relative group cursor-pointer"
-                    style={{ height: "100%" }}
-                  >
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 bg-foreground/15 rounded-t-sm group-hover:bg-foreground/30 transition-colors duration-200"
-                      initial={{ height: 0 }}
-                      animate={{ height: `${h}%` }}
-                      transition={{ duration: 0.6, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
-                    />
-                    {/* Tooltip */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      <div className="bg-foreground text-background text-[10px] px-2 py-1 rounded-md whitespace-nowrap font-medium">{h}</div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-              <div className="flex justify-between text-[10px] text-muted-foreground mt-3 font-medium">
-                <span>Jul 7</span>
-                <span>Jul 14</span>
-                <span>Jul 20</span>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Activity */}
         <motion.div variants={cardVariants}>
           <Card className="bg-card border-border/50 h-full">
             <CardHeader className="px-6 pt-6 pb-4">
               <CardTitle className="text-[15px] font-semibold">Recent Activity</CardTitle>
-              <CardDescription className="text-[13px] mt-0.5">Latest actions by AI</CardDescription>
+              <CardDescription className="text-[13px] mt-0.5">Latest actions by your AI Receptionist</CardDescription>
             </CardHeader>
             <CardContent className="px-6 pb-6">
-              <div className="space-y-4">
-                {recentActivity.map((item, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 + i * 0.07, duration: 0.4 }}
-                    className="flex items-center gap-3"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-muted/60 flex items-center justify-center shrink-0">
-                      <item.icon size={13} className="text-muted-foreground" strokeWidth={1.75} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-medium leading-none mb-1 truncate">{item.action}</p>
-                      <p className="text-[11px] text-muted-foreground leading-none truncate">{item.target}</p>
-                    </div>
-                    <span className="text-[11px] text-muted-foreground shrink-0">{item.time}</span>
-                  </motion.div>
-                ))}
-              </div>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-10 text-muted-foreground">
+                  <Loader2 size={16} className="animate-spin" />
+                </div>
+              ) : activity.length === 0 ? (
+                <p className="text-[13px] text-muted-foreground text-center py-10">No activity yet.</p>
+              ) : (
+                <div className="space-y-4">
+                  {activity.map((item, i) => {
+                    const Icon = ACTIVITY_ICONS[item.type] || Activity
+                    return (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 + i * 0.07, duration: 0.4 }}
+                        className="flex items-center gap-3"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-muted/60 flex items-center justify-center shrink-0">
+                          <Icon size={13} className="text-muted-foreground" strokeWidth={1.75} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13px] font-medium leading-none mb-1 truncate">{item.action}</p>
+                          <p className="text-[11px] text-muted-foreground leading-none truncate">{item.target}</p>
+                        </div>
+                        <span className="text-[11px] text-muted-foreground shrink-0">{timeAgo(item.timestamp)}</span>
+                      </motion.div>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

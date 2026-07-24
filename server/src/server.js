@@ -1,14 +1,14 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import dns from "dns";
 import connectDB from "./config/db.js";
 import healthRoutes from "./routes/HelthRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
 // import geminiRoutes from "./routes/geminiRoutes.js";
-dotenv.config();
 
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
@@ -27,7 +27,8 @@ app.use("/api/v1/health", healthRoutes);
 app.use("/api/v1/upload", uploadRoutes);
 app.use("/api/v1/chat", chatRoutes);
 app.use("/api/v1/booking", bookingRoutes);
-app.use("/api/v1/chat", chatRoutes);
+app.use("/api/v1/dashboard", dashboardRoutes);
+
 // app.use("/api/v1/gemini", geminiRoutes)
 
 app.use((req, res) => {

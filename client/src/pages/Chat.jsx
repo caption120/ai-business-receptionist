@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Send, Bot, User, Paperclip, Mic, Calendar, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { chatService } from "@/services/api"
+import { chatService } from "@/api"
 
 const SUGGESTED_PROMPTS = [
   { label: "Book a consultation", icon: Calendar },

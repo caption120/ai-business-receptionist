@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -6,21 +6,48 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { FileText, Search, Upload, Filter, MoreVertical, CheckCircle2, Loader2, Database, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { knowledgeService } from "@/services/api"
+import { knowledgeService } from "@/api"
 
-const docs = [
-  { name: "Company_Policies_2026.pdf", size: "2.4 MB", date: "Today", status: "Active", chunks: 142 },
-  { name: "Service_Pricing_Guide.pdf", size: "1.1 MB", date: "Yesterday", status: "Active", chunks: 56 },
-  { name: "FAQ_Responses_Template.pdf", size: "845 KB", date: "Oct 12", status: "Active", chunks: 28 },
-  { name: "Product_Catalog_V3.pdf", size: "5.2 MB", date: "Oct 05", status: "Processing", chunks: 0 },
-  { name: "Onboarding_Manual.pdf", size: "3.8 MB", date: "Sep 28", status: "Active", chunks: 215 },
-]
+function formatFileSize(bytes) {
+  if (!bytes) return "0 KB"
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function formatUploadDate(isoString) {
+  if (!isoString) return "—"
+  const date = new Date(isoString)
+  const today = new Date()
+  if (date.toDateString() === today.toDateString()) return "Today"
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday"
+  return date.toLocaleDateString("en-US", { month: "short", day: "2-digit" })
+}
 
 export default function KnowledgeBase() {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [docs, setDocs] = useState([])
+  const [isLoadingDocs, setIsLoadingDocs] = useState(true)
   const fileInputRef = useRef(null)
+
+  const loadDocuments = useCallback(async () => {
+    setIsLoadingDocs(true)
+    try {
+      const response = await knowledgeService.listDocuments()
+      setDocs(response.data || [])
+    } catch (error) {
+      console.error("Failed to load documents:", error)
+    } finally {
+      setIsLoadingDocs(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadDocuments()
+  }, [loadDocuments])
 
   const handleUploadClick = () => {
     fileInputRef.current?.click()
@@ -35,6 +62,7 @@ export default function KnowledgeBase() {
       const response = await knowledgeService.uploadPDF(file)
       console.log("PDF Upload Response:", response)
       setUploadSuccess(true)
+      await loadDocuments()
       setTimeout(() => setUploadSuccess(false), 3500)
     } catch (error) {
       console.error("Upload failed:", error)
@@ -47,7 +75,7 @@ export default function KnowledgeBase() {
     }
   }
 
-  const filtered = docs.filter(d => d.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filtered = docs.filter(d => (d.originalName || "").toLowerCase().includes(searchQuery.toLowerCase()))
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto w-full">
@@ -125,58 +153,66 @@ export default function KnowledgeBase() {
 
       {/* Document Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        <AnimatePresence>
-          {filtered.map((doc, i) => (
-            <motion.div
-              key={doc.name}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ delay: i * 0.07, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <Card className="bg-card border-border/50 group hover:border-border hover:shadow-sm transition-all duration-200 cursor-pointer">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-muted/60 border border-border/40 flex items-center justify-center shrink-0">
-                      <FileText size={18} className="text-muted-foreground" strokeWidth={1.5} />
+        {isLoadingDocs ? (
+          <div className="col-span-full flex items-center justify-center py-16 text-muted-foreground">
+            <Loader2 size={18} className="animate-spin" />
+          </div>
+        ) : (
+          <AnimatePresence>
+            {filtered.map((doc, i) => (
+              <motion.div
+                key={doc.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ delay: i * 0.07, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <Card className="bg-card border-border/50 group hover:border-border hover:shadow-sm transition-all duration-200 cursor-pointer">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="w-10 h-10 rounded-xl bg-muted/60 border border-border/40 flex items-center justify-center shrink-0">
+                        <FileText size={18} className="text-muted-foreground" strokeWidth={1.5} />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] font-medium px-2 py-0.5 gap-1",
+                            doc.status === "Active"
+                              ? "border-foreground/15 bg-foreground/5 text-foreground"
+                              : doc.status === "Failed"
+                              ? "border-destructive/30 bg-destructive/8 text-destructive"
+                              : "border-amber-500/30 bg-amber-500/8 text-amber-500"
+                          )}
+                        >
+                          {doc.status === "Processing" && <Loader2 size={9} className="animate-spin" />}
+                          {doc.status}
+                        </Badge>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                          <MoreVertical size={14} />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-[10px] font-medium px-2 py-0.5 gap-1",
-                          doc.status === "Active"
-                            ? "border-foreground/15 bg-foreground/5 text-foreground"
-                            : "border-amber-500/30 bg-amber-500/8 text-amber-500"
-                        )}
-                      >
-                        {doc.status === "Processing" && <Loader2 size={9} className="animate-spin" />}
-                        {doc.status}
-                      </Badge>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
-                        <MoreVertical size={14} />
-                      </Button>
+
+                    {/* File name */}
+                    <p className="text-[13px] font-semibold text-foreground truncate mb-1" title={doc.originalName}>
+                      {(doc.originalName || "Untitled").replace(".pdf", "")}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mb-4">.pdf</p>
+
+                    {/* Meta */}
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-3 border-t border-border/40">
+                      <span>{formatFileSize(doc.size)} · {formatUploadDate(doc.uploadedAt)}</span>
+                      <span className="flex items-center gap-1">
+                        <Database size={11} strokeWidth={1.75} /> {doc.chunks || 0} vectors
+                      </span>
                     </div>
-                  </div>
-
-                  {/* File name */}
-                  <p className="text-[13px] font-semibold text-foreground truncate mb-1" title={doc.name}>
-                    {doc.name.replace(".pdf", "")}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mb-4">.pdf</p>
-
-                  {/* Meta */}
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-3 border-t border-border/40">
-                    <span>{doc.size} · {doc.date}</span>
-                    <span className="flex items-center gap-1">
-                      <Database size={11} strokeWidth={1.75} /> {doc.chunks} vectors
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
 
         {/* Upload Drop Zone */}
         <motion.div

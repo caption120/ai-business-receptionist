@@ -1,6 +1,7 @@
 import { retrieveRelevantChunks } from "../services/chatService.js";
 
 import { askAI } from "../services/aiService.js";
+import { logActivity, incrementCounter } from "../memory/activityMemory.js";
 
 export const chatWithPDF = async (req, res, next) => {
     try {
@@ -49,7 +50,14 @@ export const chatWithPDF = async (req, res, next) => {
 
 export const chat = async (req, res) => {
     try {
-        const { message } = req.body || {};
+        const { sessionId, message } = req.body || {};
+
+        if (!sessionId) {
+            return res.status(400).json({
+                success: false,
+                message: "Session ID is required.",
+            });
+        }
 
         if (!message) {
             return res.status(400).json({
@@ -58,12 +66,16 @@ export const chat = async (req, res) => {
             });
         }
 
-        const response = await askAI(message);
+        const response = await askAI(sessionId, message);
+
+        incrementCounter("conversations");
+        logActivity("chat", "Answered query", message.length > 60 ? `${message.slice(0, 60)}…` : message);
 
         return res.status(200).json({
             success: true,
             data: response,
         });
+
     } catch (error) {
         console.error(error);
 
