@@ -7,8 +7,8 @@
 **A production-ready AI-powered business receptionist built with LangChain, Gemini, and React.**  
 Handles appointments, answers questions, and manages your calendar — 24/7, autonomously.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black?style=for-the-badge&logo=vercel)](https://client-seven-steel-79.vercel.app)
-[![Backend](https://img.shields.io/badge/Backend-Railway-blueviolet?style=for-the-badge&logo=railway)](https://legal-rag-chatbot-production.up.railway.app)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Netlify-black?style=for-the-badge&logo=netlify)](https://ai-business-receptionist.netlify.app)
+[![Backend](https://img.shields.io/badge/Backend-Railway-blueviolet?style=for-the-badge&logo=railway)](https://ai-business-receptionist-api-production.up.railway.app)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-brightgreen?style=for-the-badge&logo=node.js)](https://nodejs.org)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)](https://react.dev)
@@ -34,8 +34,8 @@ AI Business Receptionist is an intelligent, full-stack conversational agent that
 
 | Surface | URL |
 |---------|-----|
-| 🌐 Frontend | [https://client-seven-steel-79.vercel.app](https://client-seven-steel-79.vercel.app) |
-| ⚙️ Backend API | [https://legal-rag-chatbot-production.up.railway.app](https://legal-rag-chatbot-production.up.railway.app) |
+| 🌐 Frontend | [https://ai-business-receptionist.netlify.app](https://ai-business-receptionist.netlify.app) |
+| ⚙️ Backend API | [https://ai-business-receptionist-api-production.up.railway.app](https://ai-business-receptionist-api-production.up.railway.app) |
 
 ---
 
@@ -308,18 +308,22 @@ Returns `{ success: true, transcript: "..." }`. Text-to-speech (`/api/v1/voice/s
 
 ## 🚢 Deployment
 
-### Frontend → Vercel
+### Frontend → Netlify
+The site is linked to this repo's `main` branch for continuous deployment — every push triggers a new build automatically (base directory `client`, build command `npm run build`, publish directory `client/dist`). Set `VITE_API_URL` (pointed at your Railway backend URL) as an environment variable in the Netlify dashboard.
+
+Manual deploy (fallback, if you ever need to publish without pushing to git):
 ```bash
 cd client
-vercel --prod
+npm run build
+netlify deploy --prod
 ```
-Set environment variable `VITE_API_URL` to your backend URL in the Vercel dashboard.
 
 ### Backend → Railway
+Not git-connected — deploys are manual. After merging changes that need to go live:
 ```bash
 cd server
-railway login
-railway link
+railway login   # first time only
+railway link    # first time only
 railway variables --set "GOOGLE_API_KEY=..." --set "MONGODB_URI=..."
 railway up --detach
 ```
@@ -365,6 +369,6 @@ This project is licensed under the MIT License.
 
 Built with ❤️ by **Gautam Bhayani**
 
-[GitHub](https://github.com/caption120) · [Live Demo](https://client-seven-steel-79.vercel.app)
+[GitHub](https://github.com/caption120) · [Live Demo](https://ai-business-receptionist.netlify.app)
 
 </div>
